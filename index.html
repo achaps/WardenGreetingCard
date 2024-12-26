@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Chain Greeting Card</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --background: #f8fafc;
+            --text: #1e293b;
+            --error: #ef4444;
+            --success: #22c55e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        @keyframes wave {
+            0% {
+                transform: translate3d(-90px, 0, 0) rotate(-3deg);
+            }
+            50% {
+                transform: translate3d(85px, 0, 0) rotate(2deg);
+            }
+            100% {
+                transform: translate3d(-90px, 0, 0) rotate(-3deg);
+            }
+        }
+
+        .wave {
+            position: fixed;
+            top: 50%;
+            left: -100%;
+            width: 300%;
+            height: 80%;
+            opacity: 0.4;
+            z-index: -1;
+            transform-origin: center;
+        }
+
+        .wave1 {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            animation: wave 15s infinite ease-in-out;
+            z-index: -3;
+            opacity: 0.5;
+            transform-origin: 48% 50%;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            height: 60%;
+        }
+
+        .wave2 {
+            background: linear-gradient(-45deg, var(--secondary), var(--primary));
+            animation: wave 18s infinite ease-in-out reverse;
+            z-index: -2;
+            opacity: 0.4;
+            transform-origin: 52% 50%;
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            height: 65%;
+            top: 45%;
+        }
+
+        .wave3 {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            animation: wave 20s infinite ease-in-out;
+            z-index: -1;
+            opacity: 0.3;
+            transform-origin: 50% 50%;
+            border-radius: 40% 60% 70% 30% / 50% 60% 40% 50%;
+            height: 70%;
+            top: 40%;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Nouveau style pour le carrousel */
+        .network-carousel {
+            display: flex;
+            overflow-x: auto;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .network-carousel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .network-option {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+
+        .network-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .network-option.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .network-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: contain;
+        }
+
+        .network-name {
+            font-size: 0.875rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Reste des styles existants */
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--primary);
+            font-size: 2.5rem;
+        }
+
+        .connect-section {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            background: var(--secondary);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .success {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+
+        .quote-display {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--background);
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        /* Style pour l'historique des quotes */
+        .quote-history {
+            margin-top: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .quote-history-header {
+            padding: 1rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .quote-history-header h2 {
+            color: white;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .quote-history-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .quote-history.expanded .quote-history-content {
+            max-height: 300px;
+        }
+
+        .quote-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .quote-item {
+            padding: 0.75rem;
+            background: var(--background);
+            border-radius: 0.5rem;
+            border-left: 3px solid var(--primary);
+            font-size: 0.9rem;
+        }
+
+        .quote-item .quote-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .quote-item .quote-content {
+            font-size: 0.9rem;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .quote-item .quote-chain {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .quote-history.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .quote-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .quote-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        .quote-list::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .network-carousel {
+                padding: 0.5rem;
+            }
+
+            .network-option {
+                min-width: 100px;
+                padding: 0.75rem;
+            }
+
+            .network-logo {
+                width: 36px;
+                height: 36px;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .primary-button {
+            background: var(--primary);
+            flex: 1;
+        }
+
+        .secondary-button {
+            background: #64748b;
+            flex: 1;
+        }
+
+        .secondary-button:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="wave wave1"></div>
+    <div class="wave wave2"></div>
+    <div class="wave wave3"></div>
+    
+    <div class="container">
+        <h1>Cross-Chain Greeting Card</h1>
+        
+        <div class="connect-section">
+            <button id="connectWallet">Connect Wallet</button>
+            <p id="walletStatus"></p>
+        </div>
+
+        <div class="form-group">
+            <label for="quote">Your Motivational Quote</label>
+            <textarea id="quote" rows="4" placeholder="Enter your motivational quote here..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Destination Chain</label>
+            <div class="network-carousel" id="networkCarousel">
+                <div class="network-option" data-chain="sepolia">
+                    <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Sepolia" class="network-logo">
+                    <span class="network-name">Sepolia Testnet</span>
+                </div>
+                <div class="network-option" data-chain="ethereum">
+                    <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Ethereum" class="network-logo">
+                    <span class="network-name">Ethereum</span>
+                </div>
+                <div class="network-option" data-chain="polygon">
+                    <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Polygon" class="network-logo">
+                    <span class="network-name">Polygon</span>
+                </div>
+                <div class="network-option" data-chain="binance">
+                    <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png" alt="BSC" class="network-logo">
+                    <span class="network-name">BSC</span>
+                </div>
+                <div class="network-option" data-chain="avalanche">
+                    <img src="https://cryptologos.cc/logos/avalanche-avax-logo.png" alt="Avalanche" class="network-logo">
+                    <span class="network-name">Avalanche</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="recipientAddress">Recipient Address</label>
+            <input type="text" id="recipientAddress" placeholder="0x...">
+        </div>
+
+        <div class="button-group">
+            <button id="sendQuote" class="primary-button">Send Quote</button>
+            <button id="retrieveQuote" class="secondary-button">Retrieve Quote</button>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+        <div id="quoteDisplay" class="quote-display" style="display: none;"></div>
+
+        <div class="quote-history">
+            <div class="quote-history-header" onclick="toggleHistory()">
+                <h2>Quote History</h2>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="quote-history-content">
+                <div id="quoteList" class="quote-list">
+                    <!-- Les quotes seront ajoutées ici dynamiquement -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        function toggleHistory() {
+            const history = document.querySelector('.quote-history');
+            history.classList.toggle('expanded');
+        }
+    </script>
+</body>
+</html> 
